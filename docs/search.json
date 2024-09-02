@@ -1,0 +1,184 @@
+[
+  {
+    "objectID": "index.html#our-data-situation",
+    "href": "index.html#our-data-situation",
+    "title": "Survival analysis with tidymodels",
+    "section": "Our data situation",
+    "text": "Our data situation\n\nWe want to analyse time-to-event data.\n\n\n\nSide note: “time” can be any continuous variable but\nmost often it is indeed time.\n\n\n\n\nIf we don’t know the exact time, e.g., because the event\nhasn’t happened yet, the observation is censored. It is\nincomplete but not missing.\n\n\n\n\nTime-to-event data inherently has two aspects: time\nand event status. Regression and classification only\ncover one aspect each."
+  },
+  {
+    "objectID": "index.html#core-coverage",
+    "href": "index.html#core-coverage",
+    "title": "Survival analysis with tidymodels",
+    "section": "Core coverage",
+    "text": "Core coverage"
+  },
+  {
+    "objectID": "index.html#extendable",
+    "href": "index.html#extendable",
+    "title": "Survival analysis with tidymodels",
+    "section": "Extendable",
+    "text": "Extendable"
+  },
+  {
+    "objectID": "index.html#building-complaints-in-nyc",
+    "href": "index.html#building-complaints-in-nyc",
+    "title": "Survival analysis with tidymodels",
+    "section": "Building complaints in NYC",
+    "text": "Building complaints in NYC\n\nlibrary(tidymodels)\nlibrary(censored)\n\nbuilding_complaints &lt;- modeldatatoo::data_building_complaints()\nglimpse(building_complaints)\n#&gt; Rows: 4,234\n#&gt; Columns: 11\n#&gt; $ days_to_disposition &lt;dbl&gt; 72, 1, 41, 45, 16, 62, 56, 11, 35, 38, 3…\n#&gt; $ status              &lt;chr&gt; \"ACTIVE\", \"ACTIVE\", \"ACTIVE\", \"ACTIVE\", …\n#&gt; $ year_entered        &lt;fct&gt; 2023, 2023, 2023, 2023, 2023, 2023, 2023…\n#&gt; $ latitude            &lt;dbl&gt; 40.66173, 40.57668, 40.73242, 40.68245, …\n#&gt; $ longitude           &lt;dbl&gt; -73.98297, -74.00453, -73.87630, -73.793…\n#&gt; $ borough             &lt;fct&gt; Brooklyn, Brooklyn, Queens, Queens, Broo…\n#&gt; $ special_district    &lt;fct&gt; None, None, None, None, None, None, None…\n#&gt; $ unit                &lt;fct&gt; Q-L, Q-L, SPOPS, Q-L, BKLYN, Q-L, Q-L, S…\n#&gt; $ community_board     &lt;fct&gt; 307, 313, 404, 412, 312, 406, 306, 306, …\n#&gt; $ complaint_category  &lt;fct&gt; 45, 45, 49, 45, 31, 45, 45, 49, 45, 45, …\n#&gt; $ complaint_priority  &lt;fct&gt; B, B, C, B, C, B, B, C, B, B, B, B, C, C…"
+  },
+  {
+    "objectID": "index.html#building-complaints-in-nyc-1",
+    "href": "index.html#building-complaints-in-nyc-1",
+    "title": "Survival analysis with tidymodels",
+    "section": "Building complaints in NYC",
+    "text": "Building complaints in NYC\n\nbuilding_complaints &lt;- building_complaints %&gt;% \n  mutate(\n    disposition_surv = Surv(days_to_disposition, status == \"CLOSED\"), \n    .keep = \"unused\"\n  )\n\n\n\nSurv = response\nmodify response outside of recipes"
+  },
+  {
+    "objectID": "index.html#split-the-data",
+    "href": "index.html#split-the-data",
+    "title": "Survival analysis with tidymodels",
+    "section": "Split the data",
+    "text": "Split the data\n\nset.seed(403)\ncomplaints_split &lt;- initial_split(building_complaints)\n\ncomplaints_train &lt;- training(complaints_split)\ncomplaints_test &lt;- testing(complaints_split)"
+  },
+  {
+    "objectID": "index.html#building-complaints-in-nyc-2",
+    "href": "index.html#building-complaints-in-nyc-2",
+    "title": "Survival analysis with tidymodels",
+    "section": "Building complaints in NYC",
+    "text": "Building complaints in NYC"
+  },
+  {
+    "objectID": "index.html#a-first-model",
+    "href": "index.html#a-first-model",
+    "title": "Survival analysis with tidymodels",
+    "section": "A first model",
+    "text": "A first model\n\ncox_spec &lt;- proportional_hazards() %&gt;% \n  set_engine(\"survival\") %&gt;% \n  set_mode(\"censored regression\")\n\nrec_other &lt;- recipe(disposition_surv ~ ., data = complaints_train) %&gt;% \n  step_unknown(complaint_priority) %&gt;% \n  step_novel(all_nominal_predictors()) %&gt;%\n  step_other(community_board, unit, threshold = 0.02) %&gt;%\n  step_rm(complaint_category)\n\ncox_wflow &lt;- workflow() %&gt;% \n  add_recipe(rec_other) %&gt;% \n  add_model(cox_spec)\n\n\ncomplaint_category closely linked to unit, several categories are handled by one unit only"
+  },
+  {
+    "objectID": "index.html#resampling-our-first-model",
+    "href": "index.html#resampling-our-first-model",
+    "title": "Survival analysis with tidymodels",
+    "section": "Resampling our first model",
+    "text": "Resampling our first model\n\ncomplaints_rset &lt;- vfold_cv(complaints_train)\n\nsurvival_metrics &lt;- metric_set(brier_survival_integrated, brier_survival,\n                               roc_auc_survival, concordance_survival)\nevaluation_time_points &lt;- seq(0, 300, 30)"
+  },
+  {
+    "objectID": "index.html#resampling-our-first-model-1",
+    "href": "index.html#resampling-our-first-model-1",
+    "title": "Survival analysis with tidymodels",
+    "section": "Resampling our first model",
+    "text": "Resampling our first model\n\nset.seed(1)\ncox_res &lt;- fit_resamples(\n  cox_wflow,\n  resamples = complaints_rset,\n  metrics = survival_metrics,\n  eval_time = evaluation_time_points\n)"
+  },
+  {
+    "objectID": "index.html#separation-over-evaluation-time",
+    "href": "index.html#separation-over-evaluation-time",
+    "title": "Survival analysis with tidymodels",
+    "section": "Separation over evaluation time",
+    "text": "Separation over evaluation time"
+  },
+  {
+    "objectID": "index.html#calibration-over-evaluation-time",
+    "href": "index.html#calibration-over-evaluation-time",
+    "title": "Survival analysis with tidymodels",
+    "section": "Calibration over evaluation time",
+    "text": "Calibration over evaluation time"
+  },
+  {
+    "objectID": "index.html#integrated-brier-score",
+    "href": "index.html#integrated-brier-score",
+    "title": "Survival analysis with tidymodels",
+    "section": "Integrated Brier score",
+    "text": "Integrated Brier score\n\ncollect_metrics(cox_res) %&gt;% \n  filter(.metric == \"brier_survival_integrated\")\n#&gt; # A tibble: 1 × 7\n#&gt;   .metric           .estimator .eval_time   mean     n std_err .config\n#&gt;   &lt;chr&gt;             &lt;chr&gt;           &lt;dbl&gt;  &lt;dbl&gt; &lt;int&gt;   &lt;dbl&gt; &lt;chr&gt;  \n#&gt; 1 brier_survival_i… standard           NA 0.0552    10 0.00354 Prepro…"
+  },
+  {
+    "objectID": "index.html#alternative-modeling-strategy",
+    "href": "index.html#alternative-modeling-strategy",
+    "title": "Survival analysis with tidymodels",
+    "section": "Alternative modeling strategy",
+    "text": "Alternative modeling strategy\n\nInstead of lumping factor levels together in a \"other\" category,\n\n\nlet’s try out regularization on dummy variables."
+  },
+  {
+    "objectID": "index.html#switching-to-regularized-model",
+    "href": "index.html#switching-to-regularized-model",
+    "title": "Survival analysis with tidymodels",
+    "section": "Switching to regularized model",
+    "text": "Switching to regularized model\n\ncox_spec &lt;- proportional_hazards() %&gt;% \n  set_engine(\"survival\") %&gt;% \n  set_mode(\"censored regression\")\n\nrec_other &lt;- recipe(disposition_surv ~ ., data = complaints_train) %&gt;% \n  step_unknown(complaint_priority) %&gt;% \n  step_novel(community_board, unit) %&gt;%\n  step_other(community_board, unit, threshold = 0.02) %&gt;%\n  step_rm(complaint_category)\n\ncox_wflow &lt;- workflow() %&gt;% \n  add_recipe(rec_other) %&gt;% \n  add_model(cox_spec)"
+  },
+  {
+    "objectID": "index.html#switching-to-regularized-model-1",
+    "href": "index.html#switching-to-regularized-model-1",
+    "title": "Survival analysis with tidymodels",
+    "section": "Switching to regularized model",
+    "text": "Switching to regularized model\n\ncox_spec &lt;- proportional_hazards() %&gt;% \n  set_engine(\"survival\") %&gt;% \n  set_mode(\"censored regression\")\n\nrec_dummies &lt;- recipe(disposition_surv ~ ., data = complaints_train) %&gt;% \n  step_unknown(complaint_priority) %&gt;% \n  step_novel(all_nominal_predictors()) %&gt;%\n  step_dummy(all_nominal_predictors()) %&gt;% \n  step_zv(all_predictors()) %&gt;% \n  step_normalize(all_numeric_predictors())\n\ncox_wflow &lt;- workflow() %&gt;% \n  add_recipe(rec_dummies) %&gt;% \n  add_model(cox_spec)"
+  },
+  {
+    "objectID": "index.html#switching-to-regularized-model-2",
+    "href": "index.html#switching-to-regularized-model-2",
+    "title": "Survival analysis with tidymodels",
+    "section": "Switching to regularized model",
+    "text": "Switching to regularized model\n\ncoxnet_spec &lt;- proportional_hazards(penalty = 0.1) %&gt;% \n  set_engine(\"glmnet\") %&gt;% \n  set_mode(\"censored regression\")\n\nrec_dummies &lt;- recipe(disposition_surv ~ ., data = complaints_train) %&gt;% \n  step_unknown(complaint_priority) %&gt;% \n  step_novel(all_nominal_predictors()) %&gt;%\n  step_dummy(all_nominal_predictors()) %&gt;% \n  step_zv(all_predictors()) %&gt;% \n  step_normalize(all_numeric_predictors())\n\ncoxnet_wflow &lt;- workflow() %&gt;% \n  add_recipe(rec_dummies) %&gt;% \n  add_model(coxnet_spec)"
+  },
+  {
+    "objectID": "index.html#but-how-much-regularization-do-we-need",
+    "href": "index.html#but-how-much-regularization-do-we-need",
+    "title": "Survival analysis with tidymodels",
+    "section": "But how much regularization do we need?",
+    "text": "But how much regularization do we need?\n\ncoxnet_spec &lt;- proportional_hazards(\n    penalty = 0.1\n  ) %&gt;% \n  set_engine(\"glmnet\") %&gt;% \n  set_mode(\"censored regression\")\n\nrec_dummies &lt;- recipe(disposition_surv ~ ., data = complaints_train) %&gt;% \n  step_unknown(complaint_priority) %&gt;% \n  step_novel(all_nominal_predictors()) %&gt;%\n  step_dummy(all_nominal_predictors()) %&gt;% \n  step_zv(all_predictors()) %&gt;% \n  step_normalize(all_numeric_predictors())\n\ncoxnet_wflow &lt;- workflow() %&gt;% \n  add_recipe(rec_dummies) %&gt;% \n  add_model(coxnet_spec)"
+  },
+  {
+    "objectID": "index.html#but-how-much-regularization-do-we-need-1",
+    "href": "index.html#but-how-much-regularization-do-we-need-1",
+    "title": "Survival analysis with tidymodels",
+    "section": "But how much regularization do we need?",
+    "text": "But how much regularization do we need?\n\ncoxnet_spec &lt;- proportional_hazards(\n    penalty = tune()\n  ) %&gt;% \n  set_engine(\"glmnet\") %&gt;% \n  set_mode(\"censored regression\")\n\nrec_dummies &lt;- recipe(disposition_surv ~ ., data = complaints_train) %&gt;% \n  step_unknown(complaint_priority) %&gt;% \n  step_novel(all_nominal_predictors()) %&gt;%\n  step_dummy(all_nominal_predictors()) %&gt;% \n  step_zv(all_predictors()) %&gt;% \n  step_normalize(all_numeric_predictors())\n\ncoxnet_wflow &lt;- workflow() %&gt;% \n  add_recipe(rec_dummies) %&gt;% \n  add_model(coxnet_spec)"
+  },
+  {
+    "objectID": "index.html#resample-1-model",
+    "href": "index.html#resample-1-model",
+    "title": "Survival analysis with tidymodels",
+    "section": "Resample 1 model",
+    "text": "Resample 1 model\n\nset.seed(1)\ncox_res &lt;- fit_resamples(\n  cox_wflow,\n  resamples = complaints_rset,\n  metrics = survival_metrics,\n  eval_time = evaluation_time_points\n)"
+  },
+  {
+    "objectID": "index.html#resample-1-model-1",
+    "href": "index.html#resample-1-model-1",
+    "title": "Survival analysis with tidymodels",
+    "section": "Resample 1 model",
+    "text": "Resample 1 model\n\nset.seed(1)\ncoxnet_res &lt;- fit_resamples(\n  coxnet_wflow,\n  resamples = complaints_rset,\n  metrics = survival_metrics,\n  eval_time = evaluation_time_points\n)"
+  },
+  {
+    "objectID": "index.html#resample-10-models",
+    "href": "index.html#resample-10-models",
+    "title": "Survival analysis with tidymodels",
+    "section": "Resample 10 models",
+    "text": "Resample 10 models\n\nset.seed(1)\ncoxnet_res &lt;- tune_grid(\n  coxnet_wflow,\n  resamples = complaints_rset,\n  grid = 10,\n  metrics = survival_metrics,\n  eval_time = evaluation_time_points\n)"
+  },
+  {
+    "objectID": "index.html#compare-preformance",
+    "href": "index.html#compare-preformance",
+    "title": "Survival analysis with tidymodels",
+    "section": "Compare preformance",
+    "text": "Compare preformance\n\nshow_best(cox_res, metric = \"brier_survival_integrated\", n = 1)\n#&gt; # A tibble: 1 × 7\n#&gt;   .metric           .estimator .eval_time   mean     n std_err .config\n#&gt;   &lt;chr&gt;             &lt;chr&gt;           &lt;dbl&gt;  &lt;dbl&gt; &lt;int&gt;   &lt;dbl&gt; &lt;chr&gt;  \n#&gt; 1 brier_survival_i… standard           NA 0.0552    10 0.00354 Prepro…\n\nshow_best(coxnet_res, metric = \"brier_survival_integrated\", n = 1)\n#&gt; # A tibble: 1 × 8\n#&gt;   penalty .metric   .estimator .eval_time   mean     n std_err .config\n#&gt;     &lt;dbl&gt; &lt;chr&gt;     &lt;chr&gt;           &lt;dbl&gt;  &lt;dbl&gt; &lt;int&gt;   &lt;dbl&gt; &lt;chr&gt;  \n#&gt; 1 0.00750 brier_su… standard           NA 0.0531    10 0.00354 Prepro…"
+  },
+  {
+    "objectID": "index.html#tidymodels-for-survival-analysis",
+    "href": "index.html#tidymodels-for-survival-analysis",
+    "title": "Survival analysis with tidymodels",
+    "section": "tidymodels for survival analysis",
+    "text": "tidymodels for survival analysis\n\nModels:\nparametric, semi-parametric, and tree-based\nPredictions:\nsurvival time, survival probability, hazard, and linear predictor\nMetrics:\nconcordance index, Brier score, integrated Brier score, AUC ROC"
+  },
+  {
+    "objectID": "index.html#tidymodels-for-survival-analysis-1",
+    "href": "index.html#tidymodels-for-survival-analysis-1",
+    "title": "Survival analysis with tidymodels",
+    "section": "tidymodels for survival analysis",
+    "text": "tidymodels for survival analysis"
+  },
+  {
+    "objectID": "index.html#learn-more-on-tidymodels.org",
+    "href": "index.html#learn-more-on-tidymodels.org",
+    "title": "Survival analysis with tidymodels",
+    "section": "Learn more on tidymodels.org",
+    "text": "Learn more on tidymodels.org\n\nHow long until building complaints are dispositioned? A survival analysis case study\nDynamic Performance Metrics for Event Time Data\nAccounting for Censoring in Performance Metrics for Event Time Data"
+  }
+]

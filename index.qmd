@@ -1,0 +1,541 @@
+---
+title: "Survival analysis with tidymodels"
+subtitle: "RSS 2024"
+author: "Hannah Frick"
+format:
+  revealjs: 
+    slide-number: true
+    show-slide-number: all
+    footer: <https://hfrick.github.io/2024-RSS>
+    theme: [default, style.scss]
+    css: styles.css
+    highlight-style: a11y
+    width: 1280
+    height: 720
+knitr:
+  opts_chunk: 
+    echo: true
+    collapse: true
+    comment: "#>"
+---
+
+```{r setup}
+#| echo: false
+#| message: false
+#| warning: false
+library(tidymodels)
+library(censored)
+library(survminer)
+
+options(width = 70)
+
+theme_set(theme_minimal(base_size = 20))
+```
+
+
+
+# Why survival analysis?
+
+
+## Our data situation
+
+- We want to analyse time-to-event data.
+
+. . .
+
+- Side note: "time" can be any continuous variable but  
+most often it is indeed time.
+
+
+. . .
+
+- If we don't know the exact time, e.g., because the event  
+hasn't happened yet, the observation is censored. It is  
+_incomplete but not missing_.
+
+. . .
+
+- Time-to-event data inherently has two aspects: time  
+and event status. Regression and classification only  
+cover one aspect each.
+
+
+---
+
+<br><br>
+
+> Survival analysis is unique because it simultaneously considers _if_ events happened (i.e. a binary outcome) and _when_ events happened (e.g. a continuous outcome).[^1]
+
+[^1]: Denfeld QE, Burger D, Lee CS (2023) _Survival analysis 101: an easy start guide  
+to analysing time-to-event data_. European Journal of Cardiovascular Nursing,  
+Volume 22, Issue 3, Pages 332–337, <https://doi.org/10.1093/eurjcn/zvad023>
+
+
+
+
+
+<!-- ----------------------------------------------------------------------- -->
+
+
+
+
+
+# Why tidymodels?
+
+---
+
+<br><br><br>
+
+::: {.r-fit-text}
+tidymodels is a framework for modelling and 
+
+machine learning using tidyverse principles.
+:::
+
+
+## Core coverage
+
+. . .
+
+<!-- left to right, one right next to each other: increase "left" by 150 -- which is the width of the image -->
+
+![](images/hex/rsample.png){.absolute top="200" left="50" width="150"} 
+
+. . .
+
+![](images/hex/recipes.png){.absolute top="200" left="300" width="150"} 
+
+. . .
+
+![](images/hex/parsnip.png){.absolute top="200" left="550" width="150"} 
+
+. . .
+
+![](images/hex/yardstick.png){.absolute top="200" left="800" width="150"} 
+
+. . .
+
+![](images/hex/tune.png){.absolute top="200" left="1050" width="150"} 
+
+
+
+## Extendable
+
+![](images/hex/rsample.png){.absolute top="200" left="50" width="150"} 
+![](images/hex/recipes.png){.absolute top="200" left="300" width="150"} 
+![](images/hex/parsnip.png){.absolute top="200" left="550" width="150"} 
+![](images/hex/yardstick.png){.absolute top="200" left="800" width="150"} 
+![](images/hex/tune.png){.absolute top="200" left="1050" width="150"} 
+
+. . .
+
+<!-- + 133 down and + 76 to the left -->
+![](images/hex/spatialsample.png){.absolute top="333" left="126" width="150"} 
+
+. . .
+
+![](images/hex/waywiser.png){.absolute top="333" left="876" width="150"} 
+
+. . .
+
+![](images/hex/finetune.png){.absolute top="333" left="1126" width="150"} 
+
+. . .
+
+![](images/hex/textrecipes.png){.absolute top="333" left="376" width="150"} 
+![](images/hex/embed.png){.absolute top="466" left="452" width="150"} 
+![](images/hex/themis.png){.absolute top="67" left="224" width="150"} 
+
+. . .
+
+![](images/hex/agua.svg){.absolute top="-66" left="398" width="150"} 
+![](images/hex/bonsai.png){.absolute top="-66" left="550" width="150"} 
+![](images/hex/poissonreg.png){.absolute top="-66" left="702" width="150"} 
+![](images/hex/rules.png){.absolute top="67" left="474" width="150"} 
+![](images/hex/multilevelmod.png){.absolute top="67" left="626" width="150"} 
+![](images/hex/censored.png){.absolute top="333" left="626" width="150"} 
+![](images/hex/baguette.png){.absolute top="466" left="702" width="150"} 
+![](images/hex/discrim.png){.absolute top="599" left="778" width="150"} 
+
+
+
+## {background-iframe="https://www.tidymodels.org/learn/#category=developer%20tools"}
+
+::: footer
+:::
+
+
+
+
+
+
+---
+
+<br><br><br>
+
+::: {.r-fit-text}
+Focus on the modelling question,  
+
+  not the infrastructure for  
+  empirical validation.
+:::
+
+---
+
+<br><br><br>
+
+::: {.r-fit-text}
+Focus on the modelling question,  
+
+  not the syntax.
+:::
+
+::: {.notes}
+- unify: switch easily between models
+- consistency: 
+- composable functions support chunking
+  - object (a recipe) to hold all preprocessing, apply it in various places
+:::
+
+
+
+
+
+
+<!-- ----------------------------------------------------------------------- -->
+
+# Case study
+
+## Building complaints in NYC
+
+```{r}
+library(tidymodels)
+library(censored)
+
+building_complaints <- modeldatatoo::data_building_complaints()
+glimpse(building_complaints)
+```
+
+## Building complaints in NYC
+
+```{r}
+building_complaints <- building_complaints %>% 
+  mutate(
+    disposition_surv = Surv(days_to_disposition, status == "CLOSED"), 
+    .keep = "unused"
+  )
+```
+
+::: {.notes}
+- Surv = response
+- modify response outside of recipes
+:::
+
+## Split the data
+
+```{r}
+#| code-line-numbers: "1-2|4-5"
+set.seed(403)
+complaints_split <- initial_split(building_complaints)
+
+complaints_train <- training(complaints_split)
+complaints_test <- testing(complaints_split)
+```
+
+## Building complaints in NYC
+
+```{r}
+#| echo: false
+survfit(disposition_surv ~ 1, data = complaints_train) %>% 
+  ggsurvplot(legend = "none")
+```
+
+## A first model
+
+```{r}
+#| code-line-numbers: "1-3|5-9|11-13"
+cox_spec <- proportional_hazards() %>% 
+  set_engine("survival") %>% 
+  set_mode("censored regression")
+
+rec_other <- recipe(disposition_surv ~ ., data = complaints_train) %>% 
+  step_unknown(complaint_priority) %>% 
+  step_novel(all_nominal_predictors()) %>%
+  step_other(community_board, unit, threshold = 0.02) %>%
+  step_rm(complaint_category)
+
+cox_wflow <- workflow() %>% 
+  add_recipe(rec_other) %>% 
+  add_model(cox_spec)
+```
+
+::: {.notes}
+`complaint_category` closely linked to `unit`, several categories are handled by one unit only
+:::
+
+## Resampling our first model
+
+```{r}
+#| code-line-numbers: "1|3-5"
+complaints_rset <- vfold_cv(complaints_train)
+
+survival_metrics <- metric_set(brier_survival_integrated, brier_survival,
+                               roc_auc_survival, concordance_survival)
+evaluation_time_points <- seq(0, 300, 30)
+```
+
+## Resampling our first model
+
+```{r}
+#| cache: true
+set.seed(1)
+cox_res <- fit_resamples(
+  cox_wflow,
+  resamples = complaints_rset,
+  metrics = survival_metrics,
+  eval_time = evaluation_time_points
+)
+```
+
+## Separation over evaluation time
+
+```{r}
+#| echo: false
+collect_metrics(cox_res) %>% 
+  filter(.metric == "roc_auc_survival") %>% 
+  ggplot(aes(.eval_time, mean)) + 
+  geom_line() + 
+  labs(x = "Evaluation Time", y = "Area Under the ROC Curve")
+```
+
+## Calibration over evaluation time
+
+```{r}
+#| echo: false
+collect_metrics(cox_res) %>% 
+  filter(.metric == "brier_survival") %>% 
+  ggplot(aes(.eval_time, mean)) + 
+  geom_line() + 
+  labs(x = "Evaluation Time", y = "Brier Score")
+```
+
+## Integrated Brier score
+
+```{r}
+collect_metrics(cox_res) %>% 
+  filter(.metric == "brier_survival_integrated")
+```
+
+
+
+
+
+
+
+
+# Let's go further
+
+## Alternative modeling strategy
+
+<br>
+
+Instead of lumping factor levels together in a `"other"` category,  
+
+. . .
+
+<br>
+
+let's try out regularization on dummy variables.
+
+
+## Switching to regularized model
+
+```{r}
+#| eval: false
+#| code-line-numbers: "|8-9"
+cox_spec <- proportional_hazards() %>% 
+  set_engine("survival") %>% 
+  set_mode("censored regression")
+
+rec_other <- recipe(disposition_surv ~ ., data = complaints_train) %>% 
+  step_unknown(complaint_priority) %>% 
+  step_novel(community_board, unit) %>%
+  step_other(community_board, unit, threshold = 0.02) %>%
+  step_rm(complaint_category)
+
+cox_wflow <- workflow() %>% 
+  add_recipe(rec_other) %>% 
+  add_model(cox_spec)
+```
+
+## Switching to regularized model
+
+```{r}
+#| eval: false
+#| code-line-numbers: "8-10|2"
+cox_spec <- proportional_hazards() %>% 
+  set_engine("survival") %>% 
+  set_mode("censored regression")
+
+rec_dummies <- recipe(disposition_surv ~ ., data = complaints_train) %>% 
+  step_unknown(complaint_priority) %>% 
+  step_novel(all_nominal_predictors()) %>%
+  step_dummy(all_nominal_predictors()) %>% 
+  step_zv(all_predictors()) %>% 
+  step_normalize(all_numeric_predictors())
+
+cox_wflow <- workflow() %>% 
+  add_recipe(rec_dummies) %>% 
+  add_model(cox_spec)
+```
+
+## Switching to regularized model
+
+```{r}
+#| eval: false
+#| code-line-numbers: "1-2"
+coxnet_spec <- proportional_hazards(penalty = 0.1) %>% 
+  set_engine("glmnet") %>% 
+  set_mode("censored regression")
+
+rec_dummies <- recipe(disposition_surv ~ ., data = complaints_train) %>% 
+  step_unknown(complaint_priority) %>% 
+  step_novel(all_nominal_predictors()) %>%
+  step_dummy(all_nominal_predictors()) %>% 
+  step_zv(all_predictors()) %>% 
+  step_normalize(all_numeric_predictors())
+
+coxnet_wflow <- workflow() %>% 
+  add_recipe(rec_dummies) %>% 
+  add_model(coxnet_spec)
+```
+
+## But how much regularization do we need?
+
+```{r}
+#| eval: false
+#| code-line-numbers: "2"
+coxnet_spec <- proportional_hazards(
+    penalty = 0.1
+  ) %>% 
+  set_engine("glmnet") %>% 
+  set_mode("censored regression")
+
+rec_dummies <- recipe(disposition_surv ~ ., data = complaints_train) %>% 
+  step_unknown(complaint_priority) %>% 
+  step_novel(all_nominal_predictors()) %>%
+  step_dummy(all_nominal_predictors()) %>% 
+  step_zv(all_predictors()) %>% 
+  step_normalize(all_numeric_predictors())
+
+coxnet_wflow <- workflow() %>% 
+  add_recipe(rec_dummies) %>% 
+  add_model(coxnet_spec)
+```
+
+
+## But how much regularization do we need?
+
+```{r}
+#| code-line-numbers: "2"
+coxnet_spec <- proportional_hazards(
+    penalty = tune()
+  ) %>% 
+  set_engine("glmnet") %>% 
+  set_mode("censored regression")
+
+rec_dummies <- recipe(disposition_surv ~ ., data = complaints_train) %>% 
+  step_unknown(complaint_priority) %>% 
+  step_novel(all_nominal_predictors()) %>%
+  step_dummy(all_nominal_predictors()) %>% 
+  step_zv(all_predictors()) %>% 
+  step_normalize(all_numeric_predictors())
+
+coxnet_wflow <- workflow() %>% 
+  add_recipe(rec_dummies) %>% 
+  add_model(coxnet_spec)
+```
+
+## Resample 1 model
+
+```{r}
+#| eval: false
+#| code-line-numbers: "|3"
+set.seed(1)
+cox_res <- fit_resamples(
+  cox_wflow,
+  resamples = complaints_rset,
+  metrics = survival_metrics,
+  eval_time = evaluation_time_points
+)
+```
+
+## Resample 1 model
+
+```{r}
+#| eval: false
+#| code-line-numbers: "3|2"
+set.seed(1)
+coxnet_res <- fit_resamples(
+  coxnet_wflow,
+  resamples = complaints_rset,
+  metrics = survival_metrics,
+  eval_time = evaluation_time_points
+)
+```
+
+## Resample 10 models
+
+```{r}
+#| cache: true
+#| code-line-numbers: "2,5"
+set.seed(1)
+coxnet_res <- tune_grid(
+  coxnet_wflow,
+  resamples = complaints_rset,
+  grid = 10,
+  metrics = survival_metrics,
+  eval_time = evaluation_time_points
+)
+```
+
+## Compare preformance
+
+```{r}
+show_best(cox_res, metric = "brier_survival_integrated", n = 1)
+
+show_best(coxnet_res, metric = "brier_survival_integrated", n = 1)
+```
+
+
+<!-- 
+- show survival curves?
+- predict censored observations only and filter for their individual eval_time == observed_time?
+-->
+
+## tidymodels for survival analysis
+
+- [Models](https://censored.tidymodels.org/#available-models-engines-and-prediction-types):  
+  parametric, semi-parametric, and tree-based
+- [Predictions](https://censored.tidymodels.org/#available-models-engines-and-prediction-types):  
+  survival time, survival probability, hazard, and linear predictor
+- [Metrics](https://yardstick.tidymodels.org/reference/index.html#dynamic-survival-metrics):  
+  concordance index, Brier score, integrated Brier score, AUC ROC
+
+## tidymodels for survival analysis
+
+<br>
+
+![](images/hex/tidymodels.png){fig-align="center" height="400"}
+
+## Learn more on [tidymodels.org](https://www.tidymodels.org/)
+
+- [How long until building complaints are dispositioned? A survival analysis case study](https://www.tidymodels.org/learn/statistics/survival-case-study/)
+- [Dynamic Performance Metrics for Event Time Data](https://www.tidymodels.org/learn/statistics/survival-metrics/)
+- [Accounting for Censoring in Performance Metrics for Event Time Data](https://www.tidymodels.org/learn/statistics/survival-metrics-details/)
+
+
+# {background-color="#CA225E"}
+<center>
+[tidymodels.org]{style="font-size:2.5em;"}
+</center>
