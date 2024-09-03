@@ -32,7 +32,7 @@
     "href": "index.html#building-complaints-in-nyc-1",
     "title": "Survival analysis with tidymodels",
     "section": "Building complaints in NYC",
-    "text": "Building complaints in NYC\n\nbuilding_complaints &lt;- building_complaints %&gt;% \n  mutate(\n    disposition_surv = Surv(days_to_disposition, status == \"CLOSED\"), \n    .keep = \"unused\"\n  )\n\n\n\nSurv = response\nmodify response outside of recipes"
+    "text": "Building complaints in NYC\n\nbuilding_complaints &lt;- building_complaints %&gt;% \n  mutate(\n    disposition_surv = Surv(days_to_disposition, status == \"CLOSED\"), \n    .keep = \"unused\"\n  )"
   },
   {
     "objectID": "index.html#split-the-data",

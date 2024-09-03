@@ -1,10 +1,10 @@
 ---
 title: "Survival analysis with tidymodels"
 subtitle: "RSS 2024"
-author: "Hannah Frick"
+author: "Hannah Frick, Posit"
 format:
   revealjs: 
-    slide-number: true
+    slide-number: false
     show-slide-number: all
     footer: <https://hfrick.github.io/2024-RSS>
     theme: [default, style.scss]
@@ -95,25 +95,25 @@ machine learning using tidyverse principles.
 
 ## Core coverage
 
-. . .
+<!-- . . . -->
 
 <!-- left to right, one right next to each other: increase "left" by 150 -- which is the width of the image -->
 
 ![](images/hex/rsample.png){.absolute top="200" left="50" width="150"} 
 
-. . .
+<!-- . . . -->
 
 ![](images/hex/recipes.png){.absolute top="200" left="300" width="150"} 
 
-. . .
+<!-- . . . -->
 
 ![](images/hex/parsnip.png){.absolute top="200" left="550" width="150"} 
 
-. . .
+<!-- . . . -->
 
 ![](images/hex/yardstick.png){.absolute top="200" left="800" width="150"} 
 
-. . .
+<!-- . . . -->
 
 ![](images/hex/tune.png){.absolute top="200" left="1050" width="150"} 
 
@@ -132,7 +132,7 @@ machine learning using tidyverse principles.
 <!-- + 133 down and + 76 to the left -->
 ![](images/hex/spatialsample.png){.absolute top="333" left="126" width="150"} 
 
-. . .
+<!-- . . . -->
 
 ![](images/hex/waywiser.png){.absolute top="333" left="876" width="150"} 
 
@@ -190,13 +190,6 @@ Focus on the modelling question,
   not the syntax.
 :::
 
-::: {.notes}
-- unify: switch easily between models
-- consistency: 
-- composable functions support chunking
-  - object (a recipe) to hold all preprocessing, apply it in various places
-:::
-
 
 
 
@@ -225,11 +218,6 @@ building_complaints <- building_complaints %>%
     .keep = "unused"
   )
 ```
-
-::: {.notes}
-- Surv = response
-- modify response outside of recipes
-:::
 
 ## Split the data
 

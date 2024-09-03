@@ -10,7 +10,7 @@
 <link href="site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles"><meta charset="utf-8">
   <meta name="generator" content="quarto-1.6.1">
 
-  <meta name="author" content="Hannah Frick">
+  <meta name="author" content="Hannah Frick, Posit">
   <title>2024-RSS – Survival analysis with tidymodels</title>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -398,7 +398,7 @@
 <div class="quarto-title-authors">
 <div class="quarto-title-author">
 <div class="quarto-title-author-name">
-Hannah Frick 
+Hannah Frick, Posit 
 </div>
 </div>
 </div>
@@ -460,22 +460,17 @@ Volume 22, Issue 3, Pages 332–337, <a href="https://doi.org/10.1093/eurjcn/zva
 </section>
 <section id="core-coverage" class="slide level2">
 <h2>Core coverage</h2>
-<div class="fragment">
+<!-- . . . -->
 <!-- left to right, one right next to each other: increase "left" by 150 -- which is the width of the image -->
 <p><img data-src="images/hex/rsample.png" class="absolute" style="top: 200px; left: 50px; width: 150px; "></p>
-</div>
-<div class="fragment">
+<!-- . . . -->
 <p><img data-src="images/hex/recipes.png" class="absolute" style="top: 200px; left: 300px; width: 150px; "></p>
-</div>
-<div class="fragment">
+<!-- . . . -->
 <p><img data-src="images/hex/parsnip.png" class="absolute" style="top: 200px; left: 550px; width: 150px; "></p>
-</div>
-<div class="fragment">
+<!-- . . . -->
 <p><img data-src="images/hex/yardstick.png" class="absolute" style="top: 200px; left: 800px; width: 150px; "></p>
-</div>
-<div class="fragment">
+<!-- . . . -->
 <p><img data-src="images/hex/tune.png" class="absolute" style="top: 200px; left: 1050px; width: 150px; "></p>
-</div>
 </section>
 <section id="extendable" class="slide level2">
 <h2>Extendable</h2>
@@ -483,8 +478,7 @@ Volume 22, Issue 3, Pages 332–337, <a href="https://doi.org/10.1093/eurjcn/zva
 <div class="fragment">
 <!-- + 133 down and + 76 to the left -->
 <p><img data-src="images/hex/spatialsample.png" class="absolute" style="top: 333px; left: 126px; width: 150px; "></p>
-</div>
-<div class="fragment">
+<!-- . . . -->
 <p><img data-src="images/hex/waywiser.png" class="absolute" style="top: 333px; left: 876px; width: 150px; "></p>
 </div>
 <div class="fragment">
@@ -519,26 +513,6 @@ empirical validation.</p>
 <p>Focus on the modelling question,</p>
 <p>not the syntax.</p>
 </div>
-<aside class="notes">
-<ul>
-<li>unify: switch easily between models</li>
-<li>consistency:</li>
-<li>composable functions support chunking
-<ul>
-<li>object (a recipe) to hold all preprocessing, apply it in various places</li>
-</ul></li>
-</ul>
-<style type="text/css">
-        span.MJX_Assistive_MathML {
-          position:absolute!important;
-          clip: rect(1px, 1px, 1px, 1px);
-          padding: 1px 0 0 0!important;
-          border: 0!important;
-          height: 1px!important;
-          width: 1px!important;
-          overflow: hidden!important;
-          display:block!important;
-      }</style></aside>
 <!-- ----------------------------------------------------------------------- -->
 </section></section>
 <section>
@@ -578,22 +552,6 @@ empirical validation.</p>
 <span id="cb2-4"><a></a>    <span class="at">.keep =</span> <span class="st">"unused"</span></span>
 <span id="cb2-5"><a></a>  )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<aside class="notes">
-<ul>
-<li>Surv = response</li>
-<li>modify response outside of recipes</li>
-</ul>
-<style type="text/css">
-        span.MJX_Assistive_MathML {
-          position:absolute!important;
-          clip: rect(1px, 1px, 1px, 1px);
-          padding: 1px 0 0 0!important;
-          border: 0!important;
-          height: 1px!important;
-          width: 1px!important;
-          overflow: hidden!important;
-          display:block!important;
-      }</style></aside>
 </section>
 <section id="split-the-data" class="slide level2">
 <h2>Split the data</h2>
@@ -943,7 +901,7 @@ concordance index, Brier score, integrated Brier score, AUC ROC</li>
         progress: true,
 
         // Display the page number of the current slide
-        slideNumber: 'c/t',
+        slideNumber: false,
 
         // 'all', 'print', or 'speaker'
         showSlideNumber: 'all',
